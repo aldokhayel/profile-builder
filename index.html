@@ -644,6 +644,7 @@ function App() {
   };
 
   const handleAnswer = (val) => {
+    
     if (currentQ.id === "gender" && val !== answers.gender) {
       setAnswers({ gender: val });
     } else {
