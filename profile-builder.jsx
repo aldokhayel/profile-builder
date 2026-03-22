@@ -1,0 +1,712 @@
+import { useState, useEffect, useRef, useCallback } from "react";
+
+const GOOGLE_FONTS = "https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=Aref+Ruqaa:wght@400;700&display=swap";
+
+const YEARS = Array.from({ length: 2010 - 1960 + 1 }, (_, i) => 2010 - i);
+
+function getQuestions(gender) {
+  const m = gender === "ذكر";
+  const f = gender === "أنثى";
+
+  const BASIC = [
+    {
+      id: "gender",
+      label: "الجنس",
+      subtitle: "حدد جنسك أولاً لتتناسب الأسئلة معك",
+      type: "cards",
+      options: ["ذكر", "أنثى"],
+    },
+    {
+      id: "birthYear",
+      label: "سنة ميلادك",
+      subtitle: "في أي عام وُلدت؟",
+      type: "select",
+      options: YEARS.map(String),
+      placeholder: "اختر السنة...",
+    },
+    {
+      id: "city",
+      label: "مدينة إقامتك الحالية",
+      subtitle: f ? "أين تقيمين حالياً؟" : "أين تقيم حالياً؟",
+      type: "text",
+      placeholder: "اكتب اسم مدينتك...",
+    },
+    {
+      id: "height",
+      label: f ? "طولكِ (سم)" : "طولك (سم)",
+      subtitle: f ? "كم يبلغ طولكِ؟" : "كم يبلغ طولك؟",
+      type: "slider",
+      min: 140, max: 210, step: 1, unit: "سم", default: m ? 170 : 160,
+    },
+    {
+      id: "weight",
+      label: f ? "وزنكِ (كجم)" : "وزنك (كجم)",
+      subtitle: f ? "كم يبلغ وزنكِ؟" : "كم يبلغ وزنك؟",
+      type: "slider",
+      min: 40, max: 150, step: 1, unit: "كجم", default: m ? 75 : 60,
+    },
+    {
+      id: "skinColor",
+      label: "لون البشرة",
+      subtitle: f ? "ما لون بشرتكِ؟" : "ما لون بشرتك؟",
+      type: "cards",
+      options: ["أبيض", "حنطي", "قمحي", "أسمر فاتح", "أسمر", "داكن"],
+    },
+    {
+      id: "bodyType",
+      label: "بنية الجسم",
+      subtitle: f ? "كيف تصفين بنية جسمكِ؟" : "كيف تصف بنية جسمك؟",
+      type: "cards",
+      options: f
+        ? ["نحيفة", "متوسطة", "رياضية", "ممتلئة قليلاً", "ممتلئة"]
+        : ["نحيف", "متوسط", "رياضي", "ممتلئ قليلاً", "ممتلئ"],
+    },
+    {
+      id: "maritalStatus",
+      label: f ? "حالتكِ الاجتماعية" : "حالتك الاجتماعية",
+      subtitle: f ? "ما وضعكِ الاجتماعي الحالي؟" : "ما وضعك الاجتماعي الحالي؟",
+      type: "cards",
+      options: f
+        ? ["عزباء", "مطلّقة بدون أطفال", "مطلّقة بأطفال", "أرملة بدون أطفال", "أرملة بأطفال"]
+        : ["أعزب", "مطلّق بدون أطفال", "مطلّق بأطفال", "أرمل بدون أطفال", "أرمل بأطفال"],
+    },
+    {
+      id: "tribe",
+      label: "الانتماء القبلي",
+      subtitle: f ? "هل تنتمين لقبيلة؟" : "هل تنتمي لقبيلة؟",
+      type: "cards",
+      options: ["نعم، أنتمي لقبيلة", "لا أنتمي لقبيلة"],
+    },
+    {
+      id: "tribeRegion",
+      label: "منطقة القبيلة",
+      subtitle: "إلى أي منطقة تنتمي قبيلتك؟",
+      type: "cards",
+      options: ["قبائل نجد", "قبائل الشمال", "قبائل الغرب (الحجاز)", "قبائل الشرق", "قبائل الجنوب"],
+      condition: (a) => a.tribe === "نعم، أنتمي لقبيلة",
+    },
+    {
+      id: "origin",
+      label: f ? "أصلكِ / منطقتكِ الأصلية" : "أصلك / منطقتك الأصلية",
+      subtitle: f ? "من أين جذوركِ؟" : "من أين جذورك؟",
+      type: "text",
+      placeholder: "مثال: نجد، الحجاز، الجنوب...",
+    },
+  ];
+
+  const RELIGION = [
+    {
+      id: "prayerCommitment",
+      label: f ? "ما مدى التزامكِ بالصلوات الخمس؟" : "ما مدى التزامك بالصلوات الخمس؟",
+      subtitle: "الصلاة عمود الدين",
+      type: "cards",
+      options: f
+        ? ["ملتزمة تماماً بجميع الصلوات", "أصلي معظم الصلوات", "أحياناً أتأخر عن بعضها", "أسعى للالتزام أكثر"]
+        : ["ملتزم تماماً بجميع الصلوات", "أصلي معظم الصلوات", "أحياناً أتأخر عن بعضها", "أسعى للالتزام أكثر"],
+    },
+    {
+      id: "nawafil",
+      label: f ? "هل تحرصين على النوافل والسنن الرواتب؟" : "هل تحرص على النوافل والسنن الرواتب؟",
+      subtitle: "النوافل قربة إلى الله",
+      type: "cards",
+      options: ["نعم بشكل دائم", "غالباً", "أحياناً", "نادراً"],
+    },
+    {
+      id: "quran",
+      label: f ? "ما علاقتكِ بالقرآن الكريم؟" : "ما علاقتك بالقرآن الكريم؟",
+      subtitle: "خير الناس من تعلم القرآن وعلمه",
+      type: "cards",
+      options: f
+        ? ["أقرأ يومياً", "أقرأ عدة مرات أسبوعياً", "أقرأ منثال: نجد، الحجاز، الجنوب...",
+    },
+  ];
+
+  const RELIGION = [
+    {
+      id: "prayerCommitment",
+      label: f ? "ما مدى التزامكِ بالصلوات الخمس؟" : "ما مدى التزامك بالصلوات الخمس؟",
+      subtitle: "الصلاة عمود الدين",
+      type: "cards",
+      options: f
+        ? ["ملتزمة تماماً بجميع الصلوات", "أصلي معظم الصلوات", "أحياناً أتأخر عن بعضها", "أسعى للالتزام أكثر"]
+        : ["ملتزم تماماً بجميع الصلوات", "أصلي معظم الصلوات", "أحياناً أتأخر عن بعضها", "أسعى للالتزام أكثر"],
+    },
+    {
+      id: "nawafil",
+      label: f ? "هل تحرصين على النوافل والسنن الرواتب؟" : "هل تحرص على النوافل والسنن الرواتب؟",
+      subtitle: "النوافل قربة إلى الله",
+      type: "cards",
+      options: ["نعم بشكل دائم", "غالباً", "أحياناً", "نادراً"],
+    },
+    {
+      id: "quran",
+      label: f ? "ما علاقتكِ بالقرآن الكريم؟" : "ما علاقتك بالقرآن الكريم؟",
+      subtitle: "خير الناس من تعلم القرآن وعلمه",
+      type: "cards",
+      options: f
+        ? ["أقرأ يومياً", "أقرأ عدة مرات أسبوعياً", "أقرأ من حين لآخر", "أسعى لتحسين علاقتي بالقرآن"]
+        : ["أقرأ يومياً", "أقرأ عدة مرات أسبوعياً", "أقرأ من حين لآخر", "أسعى لتحسين علاقتي بالقرآن"],
+    },
+    {
+      id: "hijab",
+      label: "ما مدى التزامكِ بالحجاب؟",
+      subtitle: "سؤال خاص بالأخوات",
+      type: "cards",
+      options: ["منتقبة", "محجبة بالكامل", "محجبة مع بعض التساهل", "غير محجبة حالياً"],
+      condition: () => f,
+    },
+    {
+      id: "religiousLevel",
+      label: f ? "كيف تصفين مستوى تدينكِ بشكل عام؟" : "كيف تصف مستوى تدينك بشكل عام؟",
+      subtitle: f ? "صِفي حالتكِ الإيمانية" : "صِف حالتك الإيمانية",
+      type: "cards",
+      options: f
+        ? ["ملتزمة جداً", "ملتزمة", "متوسطة الالتزام", "أسعى للتحسن"]
+        : ["ملتزم جداً", "ملتزم", "متوسط الالتزام", "أسعى للتحسن"],
+    },
+  ];
+
+  const EDUCATION = [
+    {
+      id: "education",
+      label: f ? "مؤهلكِ الدراسي" : "مؤهلك الدراسي",
+      subtitle: f ? "ما آخر مرحلة دراسية أتممتِها؟" : "ما آخر مرحلة دراسية أتممتها؟",
+      type: "cards",
+      options: ["ثانوية عامة", "دبلوم", "بكالوريوس", "ماجستير", "دكتوراه", "أخرى"],
+    },
+    {
+      id: "major",
+      label: f ? "تخصصكِ الدراسي" : "تخصصك الدراسي",
+      subtitle: f ? "في أي مجال تخصصتِ؟" : "في أي مجال تخصصت؟",
+      type: "text",
+      placeholder: "مثال: هندسة برمجيات، إدارة أعمال...",
+    },
+    {
+      id: "workStatus",
+      label: f ? "وضعكِ الوظيفي الحالي" : "وضعك الوظيفي الحالي",
+      subtitle: f ? "هل تعملين حالياً؟" : "هل تعمل حالياً؟",
+      type: "cards",
+      options: f
+        ? ["أعمل بدوام كامل", "أعمل بدوام جزئي", "أعمل عن بُعد", "عمل حر", "باحثة عن عمل", "طالبة", "لا أعمل حالياً"]
+        : ["أعمل بدوام كامل", "أعمل بدوام جزئي", "أعمل عن بُعد", "عمل حر", "باحث عن عمل", "طالب", "متقاعد", "لا أعمل حالياً"],
+    },
+    {
+      id: "workField",
+      label: f ? "مجال عملكِ" : "مجال عملك",
+      subtitle: f ? "في أي قطاع تعملين؟" : "في أي قطاع تعمل؟",
+      type: "text",
+      placeholder: "مثال: القطاع الصحي، التقنية، التعليم...",
+      condition: (a) => ["أعمل بدوام كامل", "أعمل بدوام جزئي", "أعمل عن بُعد", "عمل حر"].includes(a.workStatus),
+    },
+    {
+      id: "workEnvironment",
+      label: "بيئة العمل",
+      subtitle: f ? "ما طبيعة بيئة عملكِ؟" : "ما طبيعة بيئة عملك؟",
+      type: "cards",
+      options: ["غير مختلطة", "مختلطة جزئياً", "مختلطة", "عمل عن بُعد"],
+      condition: (a) => ["أعمل بدوام كامل", "أعمل بدوام جزئي", "أعمل عن بُعد", "عمل حر"].includes(a.workStatus),
+    },
+  ];
+
+  const INTERESTS = [
+    {
+      id: "hobbies",
+      label: f ? "ما هواياتكِ واهتماماتكِ؟" : "ما هواياتك واهتماماتك؟",
+      subtitle: f ? "اختاري كل ما ينطبق عليكِ" : "اختر كل ما ينطبق عليك",
+      type: "multi",
+      options: ["القراءة", "الرياضة", "الطبخ", "السفر", "التصوير", "الرسم", "البرمجة", "الألعاب الإلكترونية", "ركوب الخيل", "المشي والتنزه", "الكتابة", "التطوع", "مشاهدة الأفلام", "الخط العربي", "البستنة", "الصيد", "تعلم اللغات", "الشعر", "التجارة الإلكترونية"],
+    },
+    {
+      id: "freeTime",
+      label: f ? "كيف تقضين وقت فراغكِ عادةً؟" : "كيف تقضي وقت فراغك عادةً؟",
+      subtitle: f ? "تخيّلي يوم إجازة مثالي..." : "تخيّل يوم إجازة مثالي...",
+      scenario: f
+        ? "يوم الجمعة، أنهيتِ الصلاة وعدتِ للمنزل... ماذا ستفعلين ببقية يومكِ؟"
+        : "يوم الجمعة، أنهيت صلاة الجمعة وعدت للمنزل... ماذا ستفعل ببقية يومك؟",
+      type: "textarea",
+      placeholder: f ? "صِفي لنا يومكِ المثالي..." : "صِف لنا يومك المثالي...",
+    },
+    {
+      id: "visitedCountries",
+      label: f ? "الدول التي زرتِها" : "الدول التي زرتها",
+      subtitle: f ? "أين حطّت بكِ الطائرة؟" : "أين حطّت بك الطائرة؟",
+      type: "textarea",
+      placeholder: f ? "اذكري الدول التي زرتِها..." : "اذكر الدول التي زرتها...",
+    },
+    {
+      id: "dreamDestination",
+      label: f ? "وجهتكِ الحلم" : "وجهتك الحلم",
+      subtitle: f
+        ? "لو كان بإمكانكِ السفر لأي مكان في العالم الآن، أين ستذهبين؟"
+        : "لو كان بإمكانك السفر لأي مكان في العالم الآن، أين ستذهب؟",
+      type: "textarea",
+      placeholder: f ? "صِفي المكان الذي تحلمين بزيارته..." : "صِف المكان الذي تحلم بزيارته...",
+    },
+    {
+      id: "lifeGoals",
+      label: f ? "أحلامكِ وطموحاتكِ" : "أحلامك وطموحاتك",
+      subtitle: f ? "ما الأحلام التي تسعين لتحقيقها؟" : "ما الأحلام التي تسعى لتحقيقها؟",
+      type: "textarea",
+      placeholder: f ? "شاركينا أحلامكِ وطموحاتكِ في الحياة..." : "شاركنا أحلامك وطموحاتك في الحياة...",
+    },
+  ];
+
+  const SCENARIOS = [
+    {
+      id: "scenario_weekend",
+      label: "سيناريو: عطلة نهاية الأسبوع",
+      subtitle: f ? "تخيّلي معنا هذا الموقف..." : "تخيّل معنا هذا الموقف...",
+      scenario: f
+        ? "أنتِ وشريك حياتكِ في عطلة نهاية الأسبوع، ولديكما يومان كاملان بدون أي ارتباطات. كيف تتخيلين قضاء هذين اليومين؟"
+        : "أنت وشريكة حياتك في عطلة نهاية الأسبوع، ولديكما يومان كاملان بدون أي ارتباطات. كيف تتخيل قضاء هذين اليومين؟",
+      type: "textarea",
+      placeholder: f ? "صِفي لنا كيف ستقضين العطلة المثالية..." : "صِف لنا كيف ستقضي العطلة المثالية...",
+    },
+    {
+      id: "scenario_conflict",
+      label: "سيناريو: حل الخلافات",
+      subtitle: f ? "كيف تتعاملين مع المواقف الصعبة؟" : "كيف تتعامل مع المواقف الصعبة؟",
+      scenario: f
+        ? "حدث خلاف بسيط بينكِ وبين شريك حياتكِ حول موضوع يومي. كيف تفضلين التعامل مع الموقف؟"
+        : "حدث خلاف بسيط بينك وبين شريكة حياتك حول موضوع يومي. كيف تفضل التعامل مع الموقف؟",
+      type: "cards",
+      options: f
+        ? ["أناقش الموضوع فوراً بهدوء", "أفضّل الانتظار قليلاً ثم أتحدث", "أتجاوز الأمور البسيطة", "أعبّر عن مشاعري بالكتابة أو رسالة"]
+        : ["أناقش الموضوع فوراً بهدوء", "أفضّل الانتظار قليلاً ثم أتحدث", "أتجاوز الأمور البسيطة", "أعبّر عن مشاعري بالكتابة أو رسالة"],
+    },
+    {
+      id: "scenario_family",
+      label: "سيناريو: العلاقة بالأهل",
+      subtitle: "الأهل جزء مهم من حياتنا",
+      scenario: f ? "كيف تتخيلين علاقتكِ بأهل زوجكِ؟" : "كيف تتخيل علاقتك بأهل زوجتك؟",
+      type: "cards",
+      options: ["علاقة قريبة جداً كأنهم أهلي", "علاقة ودية مع احترام الحدود", "زيارات منتظمة مع الحفاظ على الخصوصية", "علاقة احترام ومودة من بعيد"],
+    },
+    {
+      id: "scenario_finance",
+      label: "سيناريو: إدارة المال",
+      subtitle: "المال شقيق الروح",
+      scenario: f ? "كيف تفضلين إدارة الشؤون المالية في الحياة الزوجية؟" : "كيف تفضل إدارة الشؤون المالية في الحياة الزوجية؟",
+      type: "cards",
+      options: ["حساب مشترك لكل شيء", "حساب مشترك للمصروفات + حسابات شخصية", "كل طرف مستقل مالياً مع تقاسم المصروفات", "الزوج يتكفل بالمصروفات الأساسية"],
+    },
+    {
+      id: "partnerTraits",
+      label: f ? "صفات شريك حياتكِ المثالي" : "صفات شريكة حياتك المثالية",
+      subtitle: f ? "ما أهم الصفات التي تبحثين عنها؟" : "ما أهم الصفات التي تبحث عنها؟",
+      type: "multi",
+      options: f
+        ? ["متدين", "طموح", "هادئ الطبع", "اجتماعي", "مثقف", "رومانسي", "عملي", "صبور", "مرح وخفيف دم", "مستقل", "كريم", "متفهم", "قيادي", "بسيط"]
+        : ["متدينة", "طموحة", "هادئة الطبع", "اجتماعية", "مثقفة", "رومانسية", "عملية", "صبورة", "مرحة وخفيفة دم", "مستقلة", "كريمة", "متفهمة", "قيادية", "بسيطة"],
+    },
+    {
+      id: "aboutYou",
+      label: f ? "كلمة أخيرة عن نفسكِ" : "كلمة أخيرة عن نفسك",
+      subtitle: f ? "لو أردتِ أن تقولي شيئاً أخيراً عن نفسكِ، ماذا ستقولين؟" : "لو أردت أن تقول شيئاً أخيراً عن نفسك، ماذا ستقول؟",
+      type: "textarea",
+      placeholder: f ? "اكتبي ما تشائين عن نفسكِ بحرية..." : "اكتب ما تشاء عن نفسك بحرية...",
+    },
+  ];
+
+  return [
+    { title: "المعلومات الأساسية", icon: "👤", questions: BASIC, color: "#D4A574" },
+    { title: "الجانب الديني", icon: "🕌", questions: RELIGION, color: "#7BA69E" },
+    { title: "التعليم والعمل", icon: "🎓", questions: EDUCATION, color: "#8B7EC8" },
+    { title: "الاهتمامات والهوايات", icon: "✨", questions: INTERESTS, color: "#C4849A" },
+    { title: "سيناريوهات وتفضيلات", icon: "💭", questions: SCENARIOS, color: "#D4A574" },
+  ];
+}
+
+// --- Components ---
+function ProgressBar({ current, total, sectionIndex, sections }) {
+  const pct = Math.round((current / total) * 100);
+  return (
+    <div style={{ marginBottom: 32 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+        <span style={{ fontFamily: "'Tajawal', sans-serif", fontSize: 13, color: "var(--muted)", fontWeight: 500 }}>
+          {sections[sectionIndex]?.icon} {sections[sectionIndex]?.title}
+        </span>
+        <span style={{ fontFamily: "'Tajawal', sans-serif", fontSize: 13, color: "var(--muted)", fontWeight: 700 }}>{pct}%</span>
+      </div>
+      <div style={{ width: "100%", height: 6, background: "rgba(180,160,140,0.15)", borderRadius: 99, overflow: "hidden" }}>
+        <div style={{ width: `${pct}%`, height: "100%", background: `linear-gradient(90deg, ${sections[sectionIndex]?.color || "#D4A574"}, #C4849A)`, borderRadius: 99, transition: "width 0.6s cubic-bezier(.4,0,.2,1)" }} />
+      </div>
+      <div style={{ display: "flex", gap: 4, marginTop: 10 }}>
+        {sections.map((s, i) => (
+          <div key={i} style={{ flex: 1, height: 3, borderRadius: 99, background: i < sectionIndex ? s.color : i === sectionIndex ? `${s.color}66` : "rgba(180,160,140,0.12)", transition: "background 0.4s" }} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function QuestionCard({ question, value, onChange }) {
+  const [animate, setAnimate] = useState(false);
+  useEffect(() => {
+    setAnimate(false);
+    const t = setTimeout(() => setAnimate(true), 50);
+    return () => clearTimeout(t);
+  }, [question.id]);
+
+  const wrapStyle = { opacity: animate ? 1 : 0, transform: animate ? "translateY(0)" : "translateY(24px)", transition: "all 0.5s cubic-bezier(.4,0,.2,1)" };
+  const inputBase = {
+    width: "100%", padding: "14px 18px", borderRadius: 14, border: "2px solid rgba(180,160,140,0.2)",
+    background: "rgba(255,255,255,0.03)", fontFamily: "'Tajawal', sans-serif", fontSize: 17, color: "var(--text)", outline: "none", boxSizing: "border-box",
+  };
+
+  return (
+    <div style={wrapStyle}>
+      {question.scenario && (
+        <div style={{
+          background: "linear-gradient(135deg, rgba(212,165,116,0.10), rgba(196,132,154,0.10))",
+          borderRadius: 16, padding: "18px 20px", marginBottom: 20, border: "1px solid rgba(212,165,116,0.15)",
+          fontFamily: "'Aref Ruqaa', serif", fontSize: 16, lineHeight: 1.9, color: "var(--text)",
+        }}>
+          💭 {question.scenario}
+        </div>
+      )}
+      <h2 style={{ fontFamily: "'Aref Ruqaa', serif", fontSize: 26, fontWeight: 700, color: "var(--text)", marginBottom: 6, lineHeight: 1.6 }}>{question.label}</h2>
+      {question.subtitle && <p style={{ fontFamily: "'Tajawal', sans-serif", fontSize: 14, color: "var(--muted)", marginBottom: 24, lineHeight: 1.6 }}>{question.subtitle}</p>}
+
+      {question.type === "text" && <input type="text" value={value || ""} onChange={(e) => onChange(e.target.value)} placeholder={question.placeholder} style={inputBase} />}
+
+      {question.type === "textarea" && <textarea value={value || ""} onChange={(e) => onChange(e.target.value)} placeholder={question.placeholder} rows={4} style={{ ...inputBase, fontSize: 16, resize: "vertical", lineHeight: 1.8 }} />}
+
+      {question.type === "select" && (
+        <select value={value || ""} onChange={(e) => onChange(e.target.value)} style={{ ...inputBase, background: "var(--bg)", cursor: "pointer" }}>
+          <option value="">{question.placeholder || "اختر..."}</option>
+          {question.options.map((o) => <option key={o} value={o}>{o}</option>)}
+        </select>
+      )}
+
+      {question.type === "slider" && (
+        <div>
+          <div style={{ textAlign: "center", fontFamily: "'Aref Ruqaa', serif", fontSize: 42, fontWeight: 700, color: "#D4A574", marginBottom: 16 }}>
+            {value || question.default} <span style={{ fontSize: 18, color: "var(--muted)" }}>{question.unit}</span>
+          </div>
+          <input type="range" min={question.min} max={question.max} step={question.step} value={value || question.default} onChange={(e) => onChange(Number(e.target.value))} style={{ width: "100%", accentColor: "#D4A574", height: 8, cursor: "pointer", direction: "ltr" }} />
+          <div style={{ display: "flex", justifyContent: "space-between", fontFamily: "'Tajawal', sans-serif", fontSize: 12, color: "var(--muted)", marginTop: 6, direction: "ltr" }}>
+            <span>{question.min}</span><span>{question.max}</span>
+          </div>
+        </div>
+      )}
+
+      {question.type === "cards" && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+          {question.options.map((o) => {
+            const sel = value === o;
+            return (
+              <button key={o} onClick={() => onChange(o)} style={{
+                padding: "12px 22px", borderRadius: 14,
+                border: sel ? "2px solid #D4A574" : "2px solid rgba(180,160,140,0.18)",
+                background: sel ? "linear-gradient(135deg, rgba(212,165,116,0.15), rgba(196,132,154,0.10))" : "rgba(255,255,255,0.02)",
+                fontFamily: "'Tajawal', sans-serif", fontSize: 15, fontWeight: sel ? 700 : 400,
+                color: sel ? "#D4A574" : "var(--text)", cursor: "pointer", transition: "all 0.3s",
+                boxShadow: sel ? "0 2px 12px rgba(212,165,116,0.15)" : "none",
+              }}>{o}</button>
+            );
+          })}
+        </div>
+      )}
+
+      {question.type === "multi" && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {question.options.map((o) => {
+            const arr = value || [];
+            const sel = arr.includes(o);
+            return (
+              <button key={o} onClick={() => sel ? onChange(arr.filter((x) => x !== o)) : onChange([...arr, o])} style={{
+                padding: "10px 18px", borderRadius: 12,
+                border: sel ? "2px solid #7BA69E" : "2px solid rgba(180,160,140,0.18)",
+                background: sel ? "rgba(123,166,158,0.12)" : "rgba(255,255,255,0.02)",
+                fontFamily: "'Tajawal', sans-serif", fontSize: 14, fontWeight: sel ? 700 : 400,
+                color: sel ? "#7BA69E" : "var(--text)", cursor: "pointer", transition: "all 0.3s",
+              }}>{sel ? "✓ " : ""}{o}</button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LoadingDots() {
+  return (
+    <div style={{ textAlign: "center", padding: "60px 20px" }}>
+      <div style={{ fontSize: 48, marginBottom: 24, animation: "pulse 2s infinite" }}>✍️</div>
+      <h3 style={{ fontFamily: "'Aref Ruqaa', serif", fontSize: 24, color: "var(--text)", marginBottom: 12 }}>جارٍ صياغة بطاقتك...</h3>
+      <p style={{ fontFamily: "'Tajawal', sans-serif", fontSize: 14, color: "var(--muted)", marginBottom: 24 }}>نُحبّر الكلمات بعناية لتعكس شخصيتك</p>
+      <div style={{ display: "flex", justifyContent: "center", gap: 8 }}>
+        {[0, 1, 2].map((i) => (
+          <div key={i} style={{
+            width: 10, height: 10, borderRadius: "50%", background: "#D4A574",
+            animation: `bounce 1.4s ${i * 0.16}s infinite ease-in-out both`,
+          }} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// --- Main App ---
+export default function App() {
+  const [screen, setScreen] = useState("welcome");
+  const [answers, setAnswers] = useState({});
+  const [flatIndex, setFlatIndex] = useState(0);
+  const [generatedProfile, setGeneratedProfile] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const gender = answers.gender || null;
+  const sections = getQuestions(gender);
+
+  const flatQuestions = [];
+  const sectionMap = [];
+  sections.forEach((sec, si) => {
+    sec.questions.forEach((q) => {
+      flatQuestions.push(q);
+      sectionMap.push(si);
+    });
+  });
+
+  const activeQuestions = [];
+  const activeSectionMap = [];
+  flatQuestions.forEach((q, i) => {
+    if (!q.condition || q.condition(answers)) {
+      activeQuestions.push(q);
+      activeSectionMap.push(sectionMap[i]);
+    }
+  });
+
+  const currentQ = activeQuestions[flatIndex];
+  const currentSection = activeSectionMap[flatIndex] ?? 0;
+  const totalQ = activeQuestions.length;
+  const currentValue = currentQ ? answers[currentQ.id] : undefined;
+
+  const canNext = (() => {
+    if (!currentQ) return false;
+    if (currentQ.type === "slider") return true;
+    if (currentQ.type === "multi") return currentValue && currentValue.length > 0;
+    return currentValue !== undefined && currentValue !== "" && currentValue !== null;
+  })();
+
+  const buildPromptData = () => {
+    const f = gender === "أنثى";
+    let data = `الجنس: ${gender}\n`;
+    data += `سنة الميلاد: ${answers.birthYear || "—"}\n`;
+    data += `مدينة الإقامة: ${answers.city || "—"}\n`;
+    data += `الطول: ${answers.height || "—"} سم\n`;
+    data += `الوزن: ${answers.weight || "—"} كجم\n`;
+    data += `لون البشرة: ${answers.skinColor || "—"}\n`;
+    data += `بنية الجسم: ${answers.bodyType || "—"}\n`;
+    data += `الحالة الاجتماعية: ${answers.maritalStatus || "—"}\n`;
+    data += `الانتماء القبلي: ${answers.tribe || "—"}\n`;
+    if (answers.tribeRegion) data += `منطقة القبيلة: ${answers.tribeRegion}\n`;
+    data += `الأصل: ${answers.origin || "—"}\n`;
+    data += `الالتزام بالصلاة: ${answers.prayerCommitment || "—"}\n`;
+    data += `النوافل: ${answers.nawafil || "—"}\n`;
+    data += `علاقته بالقرآن: ${answers.quran || "—"}\n`;
+    if (f && answers.hijab) data += `الحجاب: ${answers.hijab}\n`;
+    data += `مستوى التدين: ${answers.religiousLevel || "—"}\n`;
+    data += `المؤهل الدراسي: ${answers.education || "—"}\n`;
+    data += `التخصص: ${answers.major || "—"}\n`;
+    data += `الوضع الوظيفي: ${answers.workStatus || "—"}\n`;
+    if (answers.workField) data += `مجال العمل: ${answers.workField}\n`;
+    if (answers.workEnvironment) data += `بيئة العمل: ${answers.workEnvironment}\n`;
+    if (answers.hobbies?.length) data += `الهوايات: ${answers.hobbies.join("، ")}\n`;
+    if (answers.freeTime) data += `وقت الفراغ: ${answers.freeTime}\n`;
+    if (answers.visitedCountries) data += `الدول المُزارة: ${answers.visitedCountries}\n`;
+    if (answers.dreamDestination) data += `الوجهة الحلم: ${answers.dreamDestination}\n`;
+    if (answers.lifeGoals) data += `الأحلام والطموحات: ${answers.lifeGoals}\n`;
+    if (answers.scenario_weekend) data += `عطلة نهاية الأسبوع المثالية: ${answers.scenario_weekend}\n`;
+    if (answers.scenario_conflict) data += `أسلوب حل الخلافات: ${answers.scenario_conflict}\n`;
+    if (answers.scenario_family) data += `العلاقة بأهل الشريك: ${answers.scenario_family}\n`;
+    if (answers.scenario_finance) data += `إدارة الشؤون المالية: ${answers.scenario_finance}\n`;
+    if (answers.partnerTraits?.length) data += `صفات الشريك المثالي: ${answers.partnerTraits.join("، ")}\n`;
+    if (answers.aboutYou) data += `كلمة أخيرة: ${answers.aboutYou}\n`;
+    return data;
+  };
+
+  const generateWithClaude = async () => {
+    setLoading(true);
+    setError("");
+    setScreen("result");
+    const data = buildPromptData();
+    const f = gender === "أنثى";
+
+    const systemPrompt = `أنت كاتب عربي بليغ متخصص في صياغة بطاقات التعارف للراغبين في الزواج. مهمتك أن تأخذ البيانات الخام وتحولها إلى نص أدبي جميل وجذاب يعكس شخصية صاحبها.
+
+القواعد:
+- استخدم ${f ? "صيغة المؤنث" : "صيغة المذكر"} في الكتابة
+- اكتب بأسلوب أدبي راقٍ لكن بسيط وغير متكلف
+- قسّم النص إلى أقسام واضحة بعناوين مزخرفة باستخدام رموز مثل ✦ ❊ ── 
+- لا تذكر أي معلومات شخصية تدل على هوية الشخص (لا اسم، لا رقم هاتف، لا إيميل)
+- اجعل النص يبدو وكأنه قصة قصيرة تعريفية وليس سيرة ذاتية جافة
+- استخدم تعابير عربية جميلة وتشبيهات لطيفة
+- ابدأ بمقدمة جذابة ومميزة
+- اختم بدعاء لطيف بالتوفيق
+- اجعل الطول مناسباً ومتوازناً
+- لا تكرر المعلومات
+- كل مرة تُستدعى فيها، اكتب بأسلوب مختلف ومبتكر`;
+
+    try {
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1000,
+          system: systemPrompt,
+          messages: [
+            {
+              role: "user",
+              content: `اصنع بطاقة تعارف أدبية جميلة ومميزة من هذه البيانات. اجعلها مختلفة وفريدة في كل مرة:\n\n${data}`,
+            },
+          ],
+        }),
+      });
+      const result = await response.json();
+      const text = result.content?.map((b) => b.text || "").join("") || "";
+      if (text) {
+        setGeneratedProfile(text);
+      } else {
+        setError("لم نتمكن من إنشاء البطاقة. حاول مرة أخرى.");
+      }
+    } catch (e) {
+      setError("حدث خطأ في الاتصال. حاول مرة أخرى.");
+    }
+    setLoading(false);
+  };
+
+  const handleNext = () => {
+    if (flatIndex < totalQ - 1) {
+      setFlatIndex(flatIndex + 1);
+    } else {
+      generateWithClaude();
+    }
+  };
+
+  const handlePrev = () => {
+    if (flatIndex > 0) setFlatIndex(flatIndex - 1);
+  };
+
+  const handleAnswer = (val) => {
+    if (currentQ.id === "gender" && val !== answers.gender) {
+      setAnswers({ gender: val });
+    } else {
+      setAnswers({ ...answers, [currentQ.id]: val });
+    }
+  };
+
+  const copyProfile = () => {
+    navigator.clipboard.writeText(generatedProfile).catch(() => {});
+  };
+
+  return (
+    <>
+      <link href={GOOGLE_FONTS} rel="stylesheet" />
+      <style>{`
+        :root { --bg: #1A1714; --card: #221F1B; --text: #F0E6DA; --muted: #9A8E80; --accent: #D4A574; }
+        @media (prefers-color-scheme: light) {
+          :root { --bg: #FBF7F2; --card: #FFFFFF; --text: #2D2520; --muted: #8A7E72; --accent: #D4A574; }
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: var(--bg); }
+        ::selection { background: rgba(212,165,116,0.3); }
+        input::placeholder, textarea::placeholder { color: var(--muted); opacity: 0.6; }
+        input:focus, textarea:focus, select:focus { border-color: #D4A574 !important; box-shadow: 0 0 0 3px rgba(212,165,116,0.12); }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.03); } }
+        @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+        .btn-main {
+          padding: 14px 40px; border-radius: 16px; border: none;
+          font-family: 'Tajawal', sans-serif; font-size: 17px; font-weight: 700;
+          cursor: pointer; transition: all 0.3s; display: inline-flex; align-items: center; gap: 8px;
+        }
+        .btn-main:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(212,165,116,0.25); }
+        .btn-main:active { transform: translateY(0); }
+        .profile-result {
+          white-space: pre-wrap; font-family: 'Tajawal', sans-serif; font-size: 16px; line-height: 2.1;
+          color: var(--text); padding: 28px; background: var(--card); border-radius: 20px;
+          border: 1px solid rgba(180,160,140,0.12);
+        }
+      `}</style>
+
+      <div style={{ maxWidth: 620, margin: "0 auto", padding: "24px 16px 60px", direction: "rtl", fontFamily: "'Tajawal', sans-serif", minHeight: "100vh" }}>
+
+        {screen === "welcome" && (
+          <div style={{ textAlign: "center", paddingTop: "12vh", animation: "fadeUp 0.8s ease-out" }}>
+            <div style={{ fontSize: 64, marginBottom: 20, animation: "pulse 3s infinite" }}>💍</div>
+            <h1 style={{ fontFamily: "'Aref Ruqaa', serif", fontSize: 36, fontWeight: 700, color: "var(--text)", marginBottom: 12, lineHeight: 1.5 }}>بطاقة التعارف</h1>
+            <p style={{ fontFamily: "'Aref Ruqaa', serif", fontSize: 18, color: "var(--muted)", marginBottom: 8, lineHeight: 1.8 }}>صِف نفسك بأجمل صورة لمن يبحث عنك</p>
+            <p style={{ fontSize: 14, color: "var(--muted)", lineHeight: 1.8, maxWidth: 420, margin: "0 auto 44px", opacity: 0.7 }}>
+              سنطرح عليك مجموعة أسئلة متنوعة عن شخصيتك واهتماماتك، ثم يصوغ لك الذكاء الاصطناعي بطاقة تعريفية بأسلوب أدبي مميز
+            </p>
+            <button className="btn-main" onClick={() => setScreen("questions")} style={{ background: "linear-gradient(135deg, #D4A574, #C4849A)", color: "#fff", fontSize: 19, padding: "16px 52px" }}>
+              هيّا نبدأ ←
+            </button>
+            <div style={{ marginTop: 40, display: "flex", justifyContent: "center", gap: 24, opacity: 0.4 }}>
+              {sections.map((s, i) => <span key={i} style={{ fontSize: 22 }}>{s.icon}</span>)}
+            </div>
+          </div>
+        )}
+
+        {screen === "questions" && currentQ && (
+          <div style={{ animation: "fadeUp 0.5s ease-out" }}>
+            <ProgressBar current={flatIndex + 1} total={totalQ} sectionIndex={currentSection} sections={sections} />
+            <div style={{
+              background: "var(--card)", borderRadius: 24, padding: "32px 28px",
+              border: "1px solid rgba(180,160,140,0.10)", boxShadow: "0 4px 32px rgba(0,0,0,0.06)",
+              marginBottom: 24, minHeight: 260,
+            }}>
+              <QuestionCard question={currentQ} value={currentValue} onChange={handleAnswer} />
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+              <button onClick={handlePrev} disabled={flatIndex === 0} style={{
+                padding: "12px 28px", borderRadius: 14, border: "2px solid rgba(180,160,140,0.18)",
+                background: "transparent", fontFamily: "'Tajawal', sans-serif", fontSize: 15, fontWeight: 600,
+                color: flatIndex === 0 ? "rgba(180,160,140,0.3)" : "var(--muted)",
+                cursor: flatIndex === 0 ? "default" : "pointer", transition: "all 0.3s",
+              }}>→ السابق</button>
+              <span style={{ fontFamily: "'Tajawal', sans-serif", fontSize: 13, color: "var(--muted)", opacity: 0.6 }}>{flatIndex + 1} / {totalQ}</span>
+              <button className="btn-main" onClick={handleNext} disabled={!canNext} style={{
+                background: canNext ? "linear-gradient(135deg, #D4A574, #C4849A)" : "rgba(180,160,140,0.15)",
+                color: canNext ? "#fff" : "var(--muted)", cursor: canNext ? "pointer" : "default", padding: "12px 32px", fontSize: 15,
+              }}>
+                {flatIndex === totalQ - 1 ? "✨ صياغة البطاقة" : "التالي ←"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {screen === "result" && (
+          <div style={{ animation: "fadeUp 0.8s ease-out" }}>
+            {loading ? (
+              <LoadingDots />
+            ) : error ? (
+              <div style={{ textAlign: "center", padding: "60px 20px" }}>
+                <div style={{ fontSize: 48, marginBottom: 16 }}>⚠️</div>
+                <p style={{ fontFamily: "'Tajawal', sans-serif", fontSize: 16, color: "#e57373", marginBottom: 24 }}>{error}</p>
+                <button className="btn-main" onClick={generateWithClaude} style={{ background: "linear-gradient(135deg, #D4A574, #C4849A)", color: "#fff" }}>🔄 إعادة المحاولة</button>
+              </div>
+            ) : (
+              <>
+                <div style={{ textAlign: "center", marginBottom: 28 }}>
+                  <div style={{ fontSize: 48, marginBottom: 12 }}>✨</div>
+                  <h2 style={{ fontFamily: "'Aref Ruqaa', serif", fontSize: 30, fontWeight: 700, color: "var(--text)", marginBottom: 8 }}>بطاقتك جاهزة</h2>
+                  <p style={{ fontSize: 14, color: "var(--muted)" }}>تم صياغتها بأسلوب أدبي مميز بواسطة الذكاء الاصطناعي</p>
+                </div>
+                <div className="profile-result">{generatedProfile}</div>
+                <div style={{ display: "flex", justifyContent: "center", gap: 12, marginTop: 24, flexWrap: "wrap" }}>
+                  <button className="btn-main" onClick={copyProfile} style={{ background: "linear-gradient(135deg, #D4A574, #C4849A)", color: "#fff" }}>📋 نسخ البطاقة</button>
+                  <button className="btn-main" onClick={generateWithClaude} style={{ background: "transparent", border: "2px solid rgba(123,166,158,0.4)", color: "#7BA69E" }}>✍️ إعادة الصياغة</button>
+                  <button className="btn-main" onClick={() => { setScreen("welcome"); setAnswers({}); setFlatIndex(0); setGeneratedProfile(""); }} style={{ background: "transparent", border: "2px solid rgba(180,160,140,0.25)", color: "var(--muted)" }}>🔄 بدء من جديد</button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
