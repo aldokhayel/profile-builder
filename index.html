@@ -433,6 +433,112 @@ function LoadingDots() {
   );
 }
 
+// --- Local Profile Card Generator ---
+function generateProfileCard(a) {
+  const f = a.gender === "أنثى";
+  const age = a.birthYear ? new Date().getFullYear() - parseInt(a.birthYear) : null;
+  const pick = (...arr) => arr[Math.floor(Math.random() * arr.length)];
+  const parts = [];
+
+  parts.push(pick("✦ بسم الله الرحمن الرحيم ✦", "❊ بطاقة التعارف ❊", "── بسم الله ──"));
+
+  const city = a.city || "مدينة جميلة";
+  const origin = a.origin ? "، وأصل" + (f ? "ها" : "ه") + " من " + a.origin : "";
+  const ageStr = age && age > 15 && age < 75 ? "في عمر الـ" + age : "";
+  parts.push(f
+    ? pick(
+        "من " + city + origin + "، تقف " + ageStr + " فتاةٌ أصيلة تحمل بين جنبيها روحاً دافئةً وعقلاً ناضجاً. تُقدّم نفسها اليوم بكل صدق وثقة.",
+        ageStr + "، ومن أرض " + city + origin + "، تطلّ هذه السيرة العطرة... فتاةٌ نشأت على القيم الأصيلة، وصاغت الحياة فيها شخصيةً متوازنة."
+      )
+    : pick(
+        "من " + city + origin + "، يتقدّم " + ageStr + " شابٌ أصيل يحمل بين جنبيه طموحاً صادقاً وقلباً نابضاً. يُقدّم نفسه اليوم بكل صدق وثقة.",
+        ageStr + "، ومن أرض " + city + origin + "، يطلّ هذا الشاب بسيرته... نشأ على القيم الأصيلة، وصاغت الحياة فيه شخصيةً راسخة."
+      )
+  );
+
+  const ph = [];
+  if (a.height) ph.push((f ? "طولها " : "طوله ") + a.height + " سم");
+  if (a.weight) ph.push((f ? "ووزنها " : "ووزنه ") + a.weight + " كجم");
+  if (a.skinColor) ph.push((f ? "بشرتها " : "بشرته ") + a.skinColor);
+  if (a.bodyType) ph.push((f ? "وبنيتها " : "وبنيته ") + a.bodyType);
+  if (ph.length) parts.push("❊ الهيئة والمظهر ❊
+
+" + ph.join("، ") + ".");
+
+  const rel = [];
+  if (a.prayerCommitment) rel.push(a.prayerCommitment);
+  if (a.nawafil && a.nawafil !== "نادراً") rel.push((f ? "تحرص على النوافل (" : "يحرص على النوافل (") + a.nawafil + ")");
+  if (a.quran) rel.push((f ? "علاقتها بالقرآن: " : "علاقته بالقرآن: ") + a.quran);
+  if (f && a.hijab) rel.push(a.hijab);
+  if (a.religiousLevel) rel.push((f ? "تصف نفسها بـ«" : "يصف نفسه بـ«") + a.religiousLevel + "»");
+  if (rel.length) parts.push("✦ الجانب الديني ✦
+
+الدين في حياة" + (f ? "ها" : "ه") + " ليس طارئاً بل أساس — " + rel.join("، ") + ".");
+
+  const edu = [];
+  if (a.education) edu.push((f ? "مؤهلها " : "مؤهله ") + a.education);
+  if (a.major) edu.push("تخصص" + (f ? "ت " : " ") + "في " + a.major);
+  if (a.workStatus) edu.push(a.workStatus);
+  if (a.workField) edu.push("في مجال " + a.workField);
+  if (edu.length) parts.push("❊ التعليم والعمل ❊
+
+" + edu.join("، ") + ".");
+
+  const hob = a.hobbies && a.hobbies.length ? a.hobbies : [];
+  if (hob.length || a.freeTime || a.dreamDestination || a.visitedCountries) {
+    let s = "✦ الاهتمامات والهوايات ✦
+
+";
+    if (hob.length) s += (f ? "تتقاطع اهتماماتها" : "تتقاطع اهتماماته") + " عند: " + hob.join(" • ") + ". ";
+    if (a.freeTime) s += (f ? "وعن يوم إجازتها تقول: «" : "وعن يوم إجازته يقول: «") + a.freeTime + "». ";
+    if (a.visitedCountries) s += (f ? "زارت: " : "زار: ") + a.visitedCountries + ". ";
+    if (a.dreamDestination) s += (f ? "ووجهة أحلامها: " : "ووجهة أحلامه: ") + a.dreamDestination + ".";
+    parts.push(s.trim());
+  }
+
+  if (a.lifeGoals) parts.push("❊ الأحلام والطموحات ❊
+
+" + (f ? "تحمل في قلبها طموحات كبيرة: «" : "يحمل في قلبه طموحات كبيرة: «") + a.lifeGoals + "»");
+
+  const scen = [];
+  if (a.scenario_weekend) scen.push((f ? "عطلتها المثالية: «" : "عطلته المثالية: «") + a.scenario_weekend + "»");
+  if (a.scenario_conflict) scen.push("عند الخلاف: " + a.scenario_conflict);
+  if (a.scenario_family) scen.push((f ? "علاقتها بأهل الزوج: " : "علاقته بأهل الزوجة: ") + a.scenario_family);
+  if (a.scenario_finance) scen.push("في إدارة المال: " + a.scenario_finance);
+  if (scen.length) parts.push("✦ الشخصية والتفضيلات ✦
+
+" + scen.join("
+"));
+
+  const tr = a.partnerTraits && a.partnerTraits.length ? a.partnerTraits : [];
+  if (tr.length) parts.push((f ? "❊ في شريك المستقبل ❊
+
+تبحث عمّن يجمع: " : "❊ في شريكة المستقبل ❊
+
+يبحث عمّن تجمع: ") + tr.join(" و") + ".");
+
+  if (a.aboutYou) parts.push((f ? "✦ بقلمها ✦
+
+«" : "✦ بقلمه ✦
+
+«") + a.aboutYou + "»");
+
+  parts.push(pick(
+    "── ── ──
+
+اللهم يسّر لكل من في قلبه نية صادقة، وبارك في كل خطوة تُخطى نحو الحلال. آمين.",
+    "── ── ──
+
+نسأل الله أن يكتب لكل قلبٍ طيّب ما يُسعده، وأن يجمع الأرواح المتوافقة. آمين.",
+    "── ── ──
+
+وفّق الله الجميع، وجمع بين المتوافقين، وبارك في كل لقاءٍ يُراد به وجهه الكريم. آمين."
+  ));
+
+  return parts.join("\n\n");
+}
+
+
 function App() {
   const [screen, setScreen] = useState("welcome");
   const [answers, setAnswers] = useState({});
@@ -511,41 +617,18 @@ function App() {
     return data;
   };
 
-  const generateWithClaude = async () => {
+  const generateWithClaude = () => {
     setLoading(true);
     setError("");
     setScreen("result");
-    const data = buildPromptData();
-    const f = gender === "أنثى";
-
-    const systemPrompt = "أنت كاتب عربي بليغ متخصص في صياغة بطاقات التعارف للراغبين في الزواج. مهمتك أن تأخذ البيانات الخام وتحولها إلى نص أدبي جميل وجذاب يعكس شخصية صاحبها.\n\nالقواعد:\n- استخدم " + (f ? "صيغة المؤنث" : "صيغة المذكر") + " في الكتابة\n- اكتب بأسلوب أدبي راقٍ لكن بسيط وغير متكلف\n- قسّم النص إلى أقسام واضحة بعناوين مزخرفة باستخدام رموز مثل \u2726 \u274A \u2500\u2500\n- لا تذكر أي معلومات شخصية تدل على هوية الشخص (لا اسم، لا رقم هاتف، لا إيميل)\n- اجعل النص يبدو وكأنه قصة قصيرة تعريفية وليس سيرة ذاتية جافة\n- استخدم تعابير عربية جميلة وتشبيهات لطيفة\n- ابدأ بمقدمة جذابة ومميزة\n- اختم بدعاء لطيف بالتوفيق\n- اجعل الطول مناسباً ومتوازناً\n- لا تكرر المعلومات\n- كل مرة تُستدعى فيها، اكتب بأسلوب مختلف ومبتكر";
-
-    try {
-      const response = await fetch("https://text.pollinations.ai/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "openai",
-          seed: Math.floor(Math.random() * 9999),
-          messages: [
-            { role: "system", content: systemPrompt },
-            {
-              role: "user",
-              content: `اصنع بطاقة تعارف أدبية جميلة ومميزة من هذه البيانات. اجعلها مختلفة وفريدة في كل مرة:\n\n${data}`,
-            },
-          ],
-        }),
-      });
-      const text = await response.text();
-      if (text && text.trim()) {
-        setGeneratedProfile(text.trim());
-      } else {
-        setError("لم نتمكن من إنشاء البطاقة. حاول مرة أخرى.");
+    setTimeout(() => {
+      try {
+        setGeneratedProfile(generateProfileCard(answers));
+      } catch (e) {
+        setError("حدث خطأ. حاول مرة أخرى.");
       }
-    } catch (e) {
-      setError("حدث خطأ في الاتصال. حاول مرة أخرى.");
-    }
-    setLoading(false);
+      setLoading(false);
+    }, 2200);
   };
 
   const handleNext = () => {
@@ -579,29 +662,19 @@ function App() {
 
       <div style={{ maxWidth: 620, margin: "0 auto", padding: "24px 16px 60px", direction: "rtl", fontFamily: "'Tajawal', sans-serif", minHeight: "100vh" }}>
 
-        {screen === "welcome" && (
-          <div style={{ textAlign: "center", paddingTop: "12vh", animation: "fadeUp 0.8s ease-out" }}>
-            <div style={{ fontSize: 64, marginBottom: 20, animation: "pulse 3s infinite" }}>{"\u{1F48D}"}</div>
-            <h1 style={{ fontFamily: "'Aref Ruqaa', serif", fontSize: 36, fontWeight: 700, color: "var(--text)", marginBottom: 12, lineHeight: 1.5 }}>بطاقة التعارف</h1>
-            <p style={{ fontFamily: "'Aref Ruqaa', serif", fontSize: 18, color: "var(--muted)", marginBottom: 8, lineHeight: 1.8 }}>صِف نفسك بأجمل صورة لمن يبحث عنك</p>
-            <p style={{ fontSize: 14, color: "var(--muted)", lineHeight: 1.8, maxWidth: 420, margin: "0 auto 44px", opacity: 0.7 }}>
-              سنطرح عليك مجموعة أسئلة متنوعة عن شخصيتك واهتماماتك، ثم يصوغ لك الذكاء الاصطناعي بطاقة تعريفية بأسلوب أدبي مميز
-            </p>
-            <button className="btn-main" onClick={() => setScreen("questions")} style={{ background: "linear-gradient(135deg, #D4A574, #C4849A)", color: "#fff", fontSize: 19, padding: "16px 52px" }}>
-              {"هيّا نبدأ \u2190"}
-            </button>
-            <div style={{ marginTop: 40, display: "flex", justifyContent: "center", gap: 24, opacity: 0.4 }}>
-              {sections.map((s, i) => <span key={i} style={{ fontSize: 22 }}>{s.icon}</span>)}
-            </div>
-          </div>
-        )}
-
-        {screen === "questions" && currentQ && (
-          <div style={{ animation: "fadeUp 0.5s ease-out" }}>
-            <ProgressBar current={flatIndex + 1} total={totalQ} sectionIndex={currentSection} sections={sections} />
-            <div style={{
-              background: "var(--card)", borderRadius: 24, padding: "32px 28px",
-              border: "1px solid rgba(180,160,140,0.10)", boxShadow: "0 4px 32px rgba(0,0,0,0.06)",
+    const generateWithClaude = () => {
+    setLoading(true);
+    setError("");
+    setScreen("result");
+    setTimeout(() => {
+      try {
+        setGeneratedProfile(generateProfileCard(answers));
+      } catch (e) {
+        setError("\u062d\u062f\u062b \u062e\u0637\u0623. \u062d\u0627\u0648\u0644 \u0645\u0631\u0629 \u0623\u062e\u0631\u0649.");
+      }
+      setLoading(false);
+    }, 2200);
+  }; 4px 32px rgba(0,0,0,0.06)",
               marginBottom: 24, minHeight: 260,
             }}>
               <QuestionCard question={currentQ} value={currentValue} onChange={handleAnswer} />
